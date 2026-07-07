@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <main class="container">
+        <header class="header">
+            <h1>PhishGuard</h1>
+            <p>Detect suspicious URLs, emails, and QR code links.</p>
+        </header>
+
+        <section class="tools">
+            <form method="POST" class="tool-card">
+                <input type="hidden" name="detector" value="url">
+
+                <h2>URL Detector</h2>
+
+                <input
+                    type="text"
+                    name="url"
+                    placeholder="Paste URL here..."
+                    required>
+
+                <button type="submit">Analyze URL</button>
+            </form>
+
+            <form method="POST" class="tool-card">
+                <input type="hidden" name="detector" value="email">
+
+                <h2>Email Detector</h2>
+
+                <input
+                    type="text"
+                    name="sender"
+                    placeholder="Sender email address">
+
+                <textarea
+                    name="email_text"
+                    placeholder="Paste email message here..."
+                    required></textarea>
+
+                <button type="submit">Analyze Email</button>
+            </form>
+
+            <form method="POST" enctype="multipart/form-data" class="tool-card">
+                <input type="hidden" name="detector" value="qr">
+
+                <h2>QR Code Detector</h2>
+
+                <input
+                    type="file"
+                    name="qr_file"
+                    accept="image/*"
+                    required>
+
+                <button type="submit">Scan QR Code</button>
+            </form>
+        </section>
+
+        {% if result %}
+        <section class="result">
+            <div class="result-top">
+                <h2>{{ result.prediction }}</h2>
+                <span>{{ result.score }}%</span>
+            </div>
+
+            {% if decoded_qr %}
+            <p class="decoded">
+                <strong>Decoded QR link:</strong> {{ decoded_qr }}
+            </p>
+            {% endif %}
+
+            <h3>Reasons</h3>
+
+            <ul>
+                {% for reason in result.reasons %}
+                <li>{{ reason }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+    </main>
+</body>
+
+</html>
