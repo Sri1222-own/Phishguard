@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request
+import os
 import re
 import urllib.request
 from urllib.parse import urlparse
@@ -39,7 +40,17 @@ SUSPICIOUS_KEYWORDS = {
     "reward": 20,
     "winner": 25,
     "free": 10,
+
+    # Additional phishing-related keywords
+    "phishing": 30,
+    "malware": 30,
+    "hack": 25,
+    "fake": 25,
+    "fraud": 30,
+    "scam": 30,
+    "steal": 30,
 }
+
 
 
 EMAIL_WARNING_WORDS = {
@@ -399,5 +410,4 @@ def home():
 
 
 if __name__ == "__main__":
-  if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
