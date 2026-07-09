@@ -1,3 +1,5 @@
+import urllib.request
+import os
 from flask import Flask, render_template, request
 import os
 import re
@@ -41,7 +43,6 @@ SUSPICIOUS_KEYWORDS = {
     "winner": 25,
     "free": 10,
 
-    # Additional phishing-related keywords
     "phishing": 30,
     "malware": 30,
     "hack": 25,
@@ -111,7 +112,38 @@ SHORTENER_DOMAINS = [
     "shorturl.at",
     "qrco.de",
 ]
+# Local phishing URL database
 
+PHISHING_DATABASE_FILE = "phishing_urls.txt"
+
+
+def load_phishing_database():
+    phishing_urls = set()
+
+    try:
+        with open(PHISHING_DATABASE_FILE, "r") as file:
+            for line in file:
+                url = line.strip().lower()
+
+                if url:
+                    phishing_urls.add(url)
+
+    except FileNotFoundError:
+        print("phishing_urls.txt not found")
+
+    return phishing_urls
+
+
+PHISHING_URLS = load_phishing_database()
+
+
+def check_phishing_database(url):
+    clean_url = url.strip().lower()
+
+    if clean_url in PHISHING_URLS:
+        return True
+
+    return False
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
@@ -176,6 +208,12 @@ def expand_redirect(url):
 def analyze_url(url, check_redirect=True):
     score = 0
     reasons = []
+
+    if check_phishing_database(url):
+        score = add_score(score, 80)
+        reasons.append(
+            "URL found in local phishing database"
+        )
 
     url = url.strip().lower()
     domain = get_domain(url)
