@@ -1,28 +1,205 @@
 import urllib.request
 import os
 from flask import Flask, render_template, request
-import os
 import re
-import urllib.request
 from urllib.parse import urlparse
 from difflib import SequenceMatcher
+import sqlite3
+from datetime import datetime
 
 app = Flask(__name__)
 
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+scan_count = 0
+threat_count = 0
+
+
+def init_db():
+
+    conn = sqlite3.connect("history.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS scans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            time TEXT,
+            detector TEXT,
+            target TEXT,
+            prediction TEXT,
+            score INTEGER
+        )
+    """)
+
+    try:
+        cursor.execute("""
+            ALTER TABLE scans
+            ADD COLUMN reason TEXT
+        """)
+    except sqlite3.OperationalError:
+        pass
+
+    conn.commit()
+    conn.close()
+
+
+init_db()
+
+
+def save_scan(detector, result, target=""):
+
+    conn = sqlite3.connect("history.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO scans
+        (time, detector, target, prediction, score, reason)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            datetime.now().strftime("%H:%M:%S"),
+            detector.upper(),
+            target,
+            result["prediction"],
+            result["score"],
+            ", ".join(result.get("reasons", [])),
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def get_history():
+
+    conn = sqlite3.connect("history.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT detector, target, prediction, score, time, reason
+        FROM scans
+        ORDER BY id DESC
+        LIMIT 5
+""")
+
+    history = cursor.fetchall()
+
+    conn.close()
+
+    return history
+
+
+def get_recent_activity():
+
+    conn = sqlite3.connect("history.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT time, detector, prediction, score
+        FROM scans
+        ORDER BY id DESC
+        LIMIT 5
+    """)
+
+    activity = cursor.fetchall()
+
+    conn.close()
+
+    return activity
+
+
+def get_stats():
+
+    conn = sqlite3.connect("history.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM scans
+        WHERE prediction = 'HIGH RISK PHISHING'
+    """)
+
+    threats = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM scans
+    """)
+
+    total_scans = cursor.fetchone()[0]
+
+    conn.close()
+
+    return total_scans, threats
+
 
 BRANDS = [
-    "amazon", "google", "paypal", "facebook", "instagram",
-    "apple", "microsoft", "netflix", "github", "linkedin",
-    "youtube", "whatsapp", "twitter", "x", "snapchat",
-    "telegram", "reddit", "discord", "tiktok", "pinterest",
-    "yahoo", "bing", "outlook", "office", "adobe",
-    "dropbox", "icloud", "spotify", "zoom", "shopify",
-    "ebay", "walmart", "aliexpress", "flipkart", "myntra",
-    "zomato", "swiggy", "uber", "ola", "airbnb",
-    "booking", "paytm", "phonepe", "gpay", "razorpay",
-    "stripe", "visa", "mastercard", "sbi", "hdfc",
-    "icici", "axisbank", "kotak", "canarabank", "irctc",
-    "uidai", "digilocker", "incometax", "coursera", "udemy"
+    "amazon",
+    "google",
+    "paypal",
+    "facebook",
+    "instagram",
+    "apple",
+    "microsoft",
+    "netflix",
+    "github",
+    "linkedin",
+    "youtube",
+    "whatsapp",
+    "twitter",
+    "x",
+    "snapchat",
+    "telegram",
+    "reddit",
+    "discord",
+    "tiktok",
+    "pinterest",
+    "yahoo",
+    "bing",
+    "outlook",
+    "office",
+    "adobe",
+    "dropbox",
+    "icloud",
+    "spotify",
+    "zoom",
+    "shopify",
+    "ebay",
+    "walmart",
+    "aliexpress",
+    "flipkart",
+    "myntra",
+    "zomato",
+    "swiggy",
+    "uber",
+    "ola",
+    "airbnb",
+    "booking",
+    "paytm",
+    "phonepe",
+    "gpay",
+    "razorpay",
+    "stripe",
+    "visa",
+    "mastercard",
+    "sbi",
+    "hdfc",
+    "icici",
+    "axisbank",
+    "kotak",
+    "canarabank",
+    "irctc",
+    "uidai",
+    "digilocker",
+    "incometax",
+    "coursera",
+    "udemy",
 ]
 
 
@@ -42,7 +219,6 @@ SUSPICIOUS_KEYWORDS = {
     "reward": 20,
     "winner": 25,
     "free": 10,
-
     "phishing": 30,
     "malware": 30,
     "hack": 25,
@@ -51,7 +227,6 @@ SUSPICIOUS_KEYWORDS = {
     "scam": 30,
     "steal": 30,
 }
-
 
 
 EMAIL_WARNING_WORDS = {
@@ -77,26 +252,47 @@ EMAIL_WARNING_WORDS = {
 
 
 REWARD_WORDS = [
-    "won", "winner", "prize", "reward", "gift", "bonus",
-    "cash", "lottery", "jackpot", "selected", "free"
+    "won",
+    "winner",
+    "prize",
+    "reward",
+    "gift",
+    "bonus",
+    "cash",
+    "lottery",
+    "jackpot",
+    "selected",
+    "free",
 ]
 
 
 URGENCY_WORDS = [
-    "urgent", "now", "immediately", "limited time",
-    "expires", "today", "final warning", "act fast"
+    "urgent",
+    "now",
+    "immediately",
+    "limited time",
+    "expires",
+    "today",
+    "final warning",
+    "act fast",
 ]
 
 
 ACTION_WORDS = [
-    "click", "claim", "verify", "confirm", "update",
-    "login", "sign in", "submit", "open", "receive"
+    "click",
+    "claim",
+    "verify",
+    "confirm",
+    "update",
+    "login",
+    "sign in",
+    "submit",
+    "open",
+    "receive",
 ]
 
 
-RISKY_ATTACHMENTS = (
-    ".exe", ".scr", ".bat", ".cmd", ".js", ".vbs", ".zip", ".rar"
-)
+RISKY_ATTACHMENTS = (".exe", ".scr", ".bat", ".cmd", ".js", ".vbs", ".zip", ".rar")
 
 
 SHORTENER_DOMAINS = [
@@ -144,6 +340,7 @@ def check_phishing_database(url):
         return True
 
     return False
+
 
 def similar(a, b):
     return SequenceMatcher(None, a, b).ratio()
@@ -211,9 +408,7 @@ def analyze_url(url, check_redirect=True):
 
     if check_phishing_database(url):
         score = add_score(score, 80)
-        reasons.append(
-            "URL found in local phishing database"
-        )
+        reasons.append("URL found in local phishing database")
 
     url = url.strip().lower()
     domain = get_domain(url)
@@ -270,7 +465,9 @@ def analyze_url(url, check_redirect=True):
 
     for brand in BRANDS:
         exact_brand_domain = domain_name == brand
-        character_substitution = normalized_domain_name == brand and domain_name != brand
+        character_substitution = (
+            normalized_domain_name == brand and domain_name != brand
+        )
         lookalike_typo = similar(domain_name, brand) > 0.8 and domain_name != brand
 
         if not exact_brand_domain and (character_substitution or lookalike_typo):
@@ -398,8 +595,29 @@ def decode_qr_code(file_storage):
     return decoded_text, None
 
 
+@app.route("/history")
+def history_page():
+
+    conn = sqlite3.connect("history.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT time, detector, prediction, score, reason
+        FROM scans
+        ORDER BY id DESC
+    """)
+
+    scans = cursor.fetchall()
+
+    conn.close()
+
+    return render_template("history.html", scans=scans)
+
+
 @app.route("/", methods=["GET", "POST"])
 def home():
+
     result = None
     detector = "url"
     decoded_qr = ""
@@ -408,13 +626,37 @@ def home():
         detector = request.form.get("detector", "url")
 
         if detector == "url":
-            url = request.form.get("url", "")
+
+            url = request.form.get("url", "").strip()
+
             result = analyze_url(url)
 
         elif detector == "email":
-            sender = request.form.get("sender", "")
-            email_text = request.form.get("email_text", "")
-            result = analyze_email(sender, email_text)
+
+            sender = request.form.get("sender", "").strip()
+            email_text = request.form.get("email_text", "").strip()
+
+            if "@" not in sender or "." not in sender:
+                result = {
+                    "prediction": "INVALID EMAIL",
+                    "score": 0,
+                    "reasons": [
+                        "Please enter a valid sender email address",
+                        "Example: sender@example.com"
+                    ]
+                }
+
+            elif len(email_text) < 5:
+                result = {
+                    "prediction": "EMAIL CONTENT TOO SHORT",
+                    "score": 0,
+                    "reasons": [
+                        "Please enter the email message content"
+                    ]
+                }
+
+            else:
+                result = analyze_email(sender, email_text)
 
         elif detector == "qr":
             qr_file = request.files.get("qr_file")
@@ -439,11 +681,35 @@ def home():
                     "input": "",
                 }
 
+        if result:
+
+            if detector == "qr":
+                target = decoded_qr if decoded_qr else "QR IMAGE"
+                save_scan(detector, result, target)
+
+            elif detector == "email":
+                target = sender
+                save_scan(detector, result, target)
+
+            elif detector == "url":
+                save_scan(detector, result, url)  
+    history = get_history()
+
+    activity = get_recent_activity()
+
+    scan_count, threat_count = get_stats()
+
+    print("TOTAL:", scan_count, "THREATS:", threat_count)
+
     return render_template(
         "index.html",
         result=result,
         detector=detector,
         decoded_qr=decoded_qr,
+        scan_count=scan_count,
+        threat_count=threat_count,
+        history=history,
+        activity=activity,
     )
 
 

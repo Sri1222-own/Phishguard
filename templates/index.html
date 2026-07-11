@@ -4,88 +4,473 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PhishGuard</title>
+
+    <title>PhishGuard | Cyber Threat Detection</title>
+
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
-    <main class="container">
-        <header class="header">
-            <h1>PhishGuard</h1>
-            <p>Detect suspicious URLs, emails, and QR code links.</p>
-        </header>
 
-        <section class="tools">
-            <form method="POST" class="tool-card">
-                <input type="hidden" name="detector" value="url">
+<main class="container">
+   
+    <header class="header">
 
-                <h2>URL Detector</h2>
+        <div class="logo">
+            🛡️
+        </div>
 
-                <input
-                    type="text"
-                    name="url"
-                    placeholder="Paste URL here..."
-                    required>
+        <h1>PhishGuard</h1>
 
-                <button type="submit">Analyze URL</button>
-            </form>
+        <p>
+            AI-powered protection against malicious URLs,
+            phishing emails, and QR code threats.
+        </p>
 
-            <form method="POST" class="tool-card">
-                <input type="hidden" name="detector" value="email">
+    </header>
+    <section class="stats">
 
-                <h2>Email Detector</h2>
 
-                <input
-                    type="text"
-                    name="sender"
-                    placeholder="Sender email address">
+    <div class="stat-card">
 
-                <textarea
-                    name="email_text"
-                    placeholder="Paste email message here..."
-                    required></textarea>
+        <div class="stat-icon">
+            🔍
+        </div>
 
-                <button type="submit">Analyze Email</button>
-            </form>
+        <div>
+            <h3>{{ scan_count }}</h3>
+            <p>Scans Completed</p>
+        </div>
 
-            <form method="POST" enctype="multipart/form-data" class="tool-card">
-                <input type="hidden" name="detector" value="qr">
+    </div>
 
-                <h2>QR Code Detector</h2>
 
-                <input
-                    type="file"
-                    name="qr_file"
-                    accept="image/*"
-                    required>
 
-                <button type="submit">Scan QR Code</button>
-            </form>
-        </section>
+    <div class="stat-card">
 
-        {% if result %}
-        <section class="result">
-            <div class="result-top">
-                <h2>{{ result.prediction }}</h2>
-                <span>{{ result.score }}%</span>
-            </div>
+        <div class="stat-icon">
+            ⚠️
+        </div>
 
-            {% if decoded_qr %}
-            <p class="decoded">
-                <strong>Decoded QR link:</strong> {{ decoded_qr }}
+        <div>
+            <h3>{{ threat_count }}</h3>
+            <p>High Risk Threats</p>
+        </div>
+
+    </div>
+
+
+
+
+    <div class="stat-card">
+
+        <div class="stat-icon">
+            🛡️
+        </div>
+
+        <div>
+            <h3>Active</h3>
+            <p>Protection Status</p>
+        </div>
+
+    </div>
+
+
+</section>
+
+
+
+
+    <section class="tools">
+
+
+        <!-- URL Detector -->
+
+        <form method="POST" class="tool-card">
+
+            <input type="hidden" name="detector" value="url">
+
+
+            <h2>
+                🔗 URL Detector
+            </h2>
+
+
+            <p>
+                Check websites for suspicious patterns and phishing indicators.
             </p>
-            {% endif %}
 
-            <h3>Reasons</h3>
 
-            <ul>
-                {% for reason in result.reasons %}
-                <li>{{ reason }}</li>
-                {% endfor %}
-            </ul>
-        </section>
+            <input
+                type="text"
+                name="url"
+                placeholder="https://example.com"
+                required>
+
+<button type="submit" class="scan-btn">
+    <span>🔍</span> Scan Website
+</button>
+
+
+        </form>
+
+
+
+
+
+        <!-- Email Detector -->
+
+        <form method="POST" class="tool-card">
+
+
+            <input type="hidden" name="detector" value="email">
+
+
+            <h2>
+                ✉️ Email Detector
+            </h2>
+
+
+            <p>
+                Analyze messages for phishing language and suspicious behaviour.
+            </p>
+
+
+            <input
+                type="text"
+                name="sender"
+                placeholder="sender@example.com">
+
+
+            <textarea
+                name="email_text"
+                placeholder="Paste suspicious email content here..."
+                required></textarea>
+
+
+            <button type="submit" class="scan-btn">
+    <span>✉️</span> Analyze Email
+</button>
+
+
+        </form>
+
+
+
+
+
+
+        <!-- QR Detector -->
+
+
+        <form 
+            method="POST"
+            enctype="multipart/form-data"
+            class="tool-card">
+
+
+            <input type="hidden" name="detector" value="qr">
+
+
+            <h2>
+                📱 QR Code Detector
+            </h2>
+
+
+            <p>
+                Upload a QR image to reveal and analyze hidden links.
+            </p>
+
+
+            <input
+                type="file"
+                name="qr_file"
+                accept="image/*"
+                required>
+
+
+        <button type="submit" class="scan-btn">
+    <span>📱</span> Scan QR Code
+</button>
+
+
+        </form>
+
+
+    </section>
+
+
+    
+<section class="activity-panel">
+
+    <h2>
+        📡 Security Activity Monitor
+    </h2>
+
+    <div class="activity-list">
+
+    {% for item in activity %}
+
+      <div class="activity-item">
+
+    <span class="status">
+        ●
+    </span>
+
+    <div class="activity-name">
+        {{ item[1] }} scan
+    </div>
+
+    <div class="activity-result
+    {% if item[2] == 'SAFE' %}
+        safe-text
+    {% elif item[2] == 'SUSPICIOUS' %}
+        warning-text
+    {% else %}
+        danger-text
+    {% endif %}
+    ">
+        {{ item[2] }}
+    </div>
+
+    <small>
+        {{ item[0] }}
+    </small>
+
+</div>
+{% endfor %}
+
+</div>
+
+</section>
+<section class="history-panel">
+
+    <h2>
+        📜 Scan History
+    </h2>
+
+
+    <table>
+
+<thead>
+    <tr>
+        <th>Time</th>
+        <th>Detector</th>
+        <th>Target</th>
+        <th>Result</th>
+        <th>Risk Score</th>
+        <th>Reason</th>
+    </tr>
+</thead>
+
+       <tbody>
+
+{% for item in history %}
+
+<tr>
+
+    <td>{{ item[4] }}</td>   <!-- Time -->
+
+<td>{{ item[0] }}</td>   <!-- Detector -->
+
+<td>
+    {{ item[1] }}         <!-- Target -->
+</td>
+
+<td>
+    {{ item[2] }}         <!-- Result -->
+</td>
+
+<td>
+    {{ item[3] }}%        <!-- Risk Score -->
+</td>
+
+<td>
+    <span class="short-reason">
+        {{ item[5][:45] }}
+
+        {% if item[5]|length > 45 %}
+            ...
         {% endif %}
-    </main>
-</body>
+    </span>
 
+    {% if item[5]|length > 45 %}
+    <details class="reason-details">
+        <summary>View reason</summary>
+        <p>{{ item[5] }}</p>
+    </details>
+    {% endif %}
+</td>
+
+</tr>
+
+{% endfor %}
+
+
+</tbody>
+
+            
+
+
+            
+
+
+           
+
+        
+
+</table>
+
+</section>
+   
+
+
+{% if result %}
+
+<div id="reportPopup" class="popup">
+
+    <div class="popup-content">
+
+        <span class="close-btn" onclick="closeReport()">
+            ×
+        </span>
+
+        <h2>
+            🛡️ Scan Report
+        </h2>
+
+<section class="result 
+{% if result.score < 40 %}
+safe-result
+
+{% elif result.score < 75 %}
+warning-result
+
+{% else %}
+danger-result
+
+{% endif %}
+">
+
+
+        <div class="result-top">
+
+
+            <h2>
+                {{ result.prediction }}
+            </h2>
+
+
+            <div class="risk-box">
+
+    <span
+    {% if result.score < 40 %}
+    class="low-risk"
+
+    {% elif result.score < 75 %}
+    class="medium-risk"
+
+    {% else %}
+    class="high-risk"
+
+    {% endif %}
+    >
+
+        {{ result.score }}%
+
+    </span>
+
+    <div class="risk-meter">
+        <div 
+        class="risk-fill"
+        style="width: {{ result.score }}%;">
+        </div>
+    </div>
+
+</div>
+
+
+        </div>
+       
+        {% if decoded_qr %}
+
+        <p class="decoded">
+
+            <strong>
+                🔍 Decoded QR link:
+            </strong>
+
+            {{ decoded_qr }}
+
+        </p>
+
+        {% endif %}
+
+
+
+
+
+
+        <h3>
+            Detection Reasons
+        </h3>
+
+
+        <ul>
+
+            {% for reason in result.reasons %}
+
+            <li>
+                {{ reason }}
+            </li>
+
+            {% endfor %}
+
+        </ul>
+
+
+    </section>
+</div>
+
+</div>
+
+    {% endif %}
+
+
+
+
+
+</main>
+
+
+<footer class="footer">
+
+    <p>
+        🛡️ PhishGuard © 2026 | Protecting users from phishing threats
+    </p>
+
+</footer>
+
+
+<script>
+
+function openReport(){
+    document.getElementById("reportPopup").style.display="flex";
+}
+
+function closeReport(){
+    document.getElementById("reportPopup").style.display="none";
+}
+
+
+{% if result %}
+window.onload = function(){
+    openReport();
+}
+{% endif %}
+
+</script>
+
+
+</body>
 </html>
